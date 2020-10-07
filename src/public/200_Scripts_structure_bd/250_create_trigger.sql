@@ -1,0 +1,1595 @@
+-- -----------------------------------------------------------------------------
+--       CREATING TRIGGERS
+-- -----------------------------------------------------------------------------
+
+-- TRIGGERS POUR GÉRER LES REDONDANCES DES DONNÉES ----------------------------------------------
+
+CREATE TRIGGER HANDLE_UPD_EDITEUR
+AFTER UPDATE ON EDITEUR FOR EACH ROW
+BEGIN
+	UPDATE
+		ARTICLE ART
+	SET
+		ART.EDT_LIB = :NEW.EDT_LIB
+	WHERE
+		ART.EDT_ID = :NEW.EDT_ID
+	;
+END;
+/
+
+CREATE OR REPLACE TRIGGER HANDLE_INSERT_ARTICLE
+BEFORE INSERT ON ARTICLE FOR EACH ROW
+BEGIN
+	SELECT
+		EDT.EDT_LIB
+	INTO
+		:NEW.EDT_LIB
+	FROM
+		EDITEUR EDT
+	WHERE
+		EDT.EDT_ID = :NEW.EDT_ID
+	;
+
+EXCEPTION
+	WHEN NO_DATA_FOUND THEN
+		DBMS_OUTPUT.PUT_LINE('Error : no data found');
+END;
+/
+
+-- TRIGGERS POUR INSERTION AUTOMATIQUES DES PRIMARY KEY ----------------------------------------------
+
+CREATE OR REPLACE TRIGGER HANDLE_PRIMARY_KEY_CLIENT
+BEFORE INSERT ON CLIENT FOR EACH ROW
+BEGIN   
+	:NEW.CLN_ID := SEQ_CLIENT.NEXTVAL;
+END;
+/
+
+CREATE OR REPLACE TRIGGER HANDLE_PRIMARY_KEY_LIVRAISON
+BEFORE INSERT ON LIVRAISON FOR EACH ROW
+BEGIN   
+	:NEW.LIV_NUM := SEQ_LIVRAISON.NEXTVAL;
+END;
+/
+
+CREATE OR REPLACE TRIGGER HANDLE_PRIMARY_KEY_COMMANDE
+BEFORE INSERT ON COMMANDE FOR EACH ROW
+BEGIN   
+	:NEW.CMD_NUM := SEQ_COMMANDE.NEXTVAL;
+END;
+/
+
+CREATE OR REPLACE TRIGGER HANDLE_PRIMARY_KEY_FACTURE
+BEFORE INSERT ON FACTURE FOR EACH ROW
+BEGIN   
+	:NEW.FCT_NUM := SEQ_FACTURE.NEXTVAL;
+END;
+/
+
+CREATE OR REPLACE TRIGGER HANDLE_PRIMARY_KEY_GENRE
+BEFORE INSERT ON GENRE FOR EACH ROW
+BEGIN   
+	:NEW.GNR_ID := SEQ_GENRE.NEXTVAL;
+END;
+/
+
+CREATE OR REPLACE TRIGGER HANDLE_PRIMARY_KEY_PROMOTION
+BEFORE INSERT ON PROMOTION FOR EACH ROW
+BEGIN   
+	:NEW.PRM_ID := SEQ_PROMOTION.NEXTVAL;
+END;
+/
+
+CREATE OR REPLACE TRIGGER HANDLE_PRIMARY_KEY_FOURNISSEUR
+BEFORE INSERT ON FOURNISSEUR FOR EACH ROW
+BEGIN   
+	:NEW.FRN_ID := SEQ_FOURNISSEUR.NEXTVAL;
+END;
+/
+
+CREATE OR REPLACE TRIGGER HANDLE_PRIMARY_KEY_EDITEUR
+BEFORE INSERT ON EDITEUR FOR EACH ROW
+BEGIN   
+	:NEW.EDT_ID := SEQ_EDITEUR.NEXTVAL;
+END;
+/
+
+CREATE OR REPLACE TRIGGER HANDLE_PRIMARY_KEY_CATEGORIE
+BEFORE INSERT ON CATEGORIE FOR EACH ROW
+BEGIN   
+	:NEW.CAT_ID := SEQ_CATEGORIE.NEXTVAL;
+END;
+/
+
+CREATE OR REPLACE TRIGGER HANDLE_PRIMARY_KEY_AUTEUR
+BEFORE INSERT ON AUTEUR FOR EACH ROW
+BEGIN   
+	:NEW.AUT_ID := SEQ_AUTEUR.NEXTVAL;
+END;
+/
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : AUTEUR
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_AUTEUR
+AFTER DELETE ON AUTEUR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE ECRIRE.
+
+     DELETE FROM ECRIRE
+     WHERE
+          ECRIRE.AUT_ID = :OLD.AUT_ID;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_AUTEUR
+AFTER UPDATE ON AUTEUR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE AUTEUR SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE ECRIRE.
+
+     IF
+          :OLD.AUT_ID <> :NEW.AUT_ID
+     THEN
+          UPDATE ECRIRE
+          SET
+               ECRIRE.AUT_ID = :NEW.AUT_ID
+          WHERE
+               ECRIRE.AUT_ID = :OLD.AUT_ID;
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : CATEGORIE
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_CATEGORIE
+AFTER DELETE ON CATEGORIE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE CLASSIFIER.
+
+     DELETE FROM CLASSIFIER
+     WHERE
+          CLASSIFIER.CAT_ID = :OLD.CAT_ID;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_CATEGORIE
+AFTER UPDATE ON CATEGORIE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE CATEGORIE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE CLASSIFIER.
+
+     IF
+          :OLD.CAT_ID <> :NEW.CAT_ID
+     THEN
+          UPDATE CLASSIFIER
+          SET
+               CLASSIFIER.CAT_ID = :NEW.CAT_ID
+          WHERE
+               CLASSIFIER.CAT_ID = :OLD.CAT_ID;
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : FACTURE
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_FACTURE
+AFTER DELETE ON FACTURE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE AVOIR.
+
+     DELETE FROM AVOIR
+     WHERE
+          AVOIR.FCT_NUM = :OLD.FCT_NUM;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_FACTURE
+AFTER UPDATE ON FACTURE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE, INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE DE LA 
+     -- TABLE FACTURE S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DE LA 
+     -- TABLE COMMANDE.
+
+     IF
+          :OLD.FCT_NUM <> :NEW.FCT_NUM
+     THEN
+          SELECT COUNT(*) INTO NUMROWS
+          FROM COMMANDE
+          WHERE
+               :NEW.CMD_NUM = COMMANDE.CMD_NUM;
+          IF 
+               (
+               NUMROWS = 0 
+               )
+          THEN
+               RAISE_APPLICATION_ERROR(
+               -20007,
+               'IMPOSSIBLE DE METTRE À JOUR "FACTURE" CAR "COMMANDE" N''EXISTE PAS.');
+          END IF;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE FACTURE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE AVOIR.
+
+     IF
+          :OLD.FCT_NUM <> :NEW.FCT_NUM
+     THEN
+          UPDATE AVOIR
+          SET
+               AVOIR.FCT_NUM = :NEW.FCT_NUM
+          WHERE
+               AVOIR.FCT_NUM = :OLD.FCT_NUM;
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_FACTURE
+AFTER INSERT ON FACTURE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE FACTURE 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE COMMANDE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM COMMANDE
+     WHERE
+          :NEW.CMD_NUM = COMMANDE.CMD_NUM;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "FACTURE" CAR "COMMANDE" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : FOURNISSEUR
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_FOURNISSEUR
+AFTER DELETE ON FOURNISSEUR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE FOURNIR.
+
+     DELETE FROM FOURNIR
+     WHERE
+          FOURNIR.FRN_ID = :OLD.FRN_ID;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_FOURNISSEUR
+AFTER UPDATE ON FOURNISSEUR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE FOURNISSEUR SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE FOURNIR.
+
+     IF
+          :OLD.FRN_ID <> :NEW.FRN_ID
+     THEN
+          UPDATE FOURNIR
+          SET
+               FOURNIR.FRN_ID = :NEW.FRN_ID
+          WHERE
+               FOURNIR.FRN_ID = :OLD.FRN_ID;
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : COMMANDE
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_COMMANDE
+AFTER DELETE ON COMMANDE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA SUPPRESSION D'UNE OCCURRENCE DE COMMANDE S'IL EXISTE DES
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE FACTURE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM FACTURE
+     WHERE
+          FACTURE.CMD_NUM = :OLD.CMD_NUM;
+     IF (NUMROWS > 0) THEN
+          RAISE_APPLICATION_ERROR(
+          -20001,
+          'IMPOSSIBLE DE SUPPRIMER "COMMANDE". DES OCCURRENCES DE "FACTURE" EXISTENT.');
+     END IF;
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE CONTENIR.
+
+     DELETE FROM CONTENIR
+     WHERE
+          CONTENIR.CMD_NUM = :OLD.CMD_NUM;
+     -- INTERDIRE LA SUPPRESSION D'UNE OCCURRENCE DE COMMANDE S'IL EXISTE DES
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE LIVRAISON.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM LIVRAISON
+     WHERE
+          LIVRAISON.CMD_NUM = :OLD.CMD_NUM;
+     IF (NUMROWS > 0) THEN
+          RAISE_APPLICATION_ERROR(
+          -20001,
+          'IMPOSSIBLE DE SUPPRIMER "COMMANDE". DES OCCURRENCES DE "LIVRAISON" EXISTENT.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_COMMANDE
+AFTER UPDATE ON COMMANDE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE, INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE DE LA 
+     -- TABLE COMMANDE S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DE LA 
+     -- TABLE CLIENT.
+
+     IF
+          :OLD.CMD_NUM <> :NEW.CMD_NUM
+     THEN
+          SELECT COUNT(*) INTO NUMROWS
+          FROM CLIENT
+          WHERE
+               :NEW.CLN_ID = CLIENT.CLN_ID;
+          IF 
+               (
+               NUMROWS = 0 
+               )
+          THEN
+               RAISE_APPLICATION_ERROR(
+               -20007,
+               'IMPOSSIBLE DE METTRE À JOUR "COMMANDE" CAR "CLIENT" N''EXISTE PAS.');
+          END IF;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE COMMANDE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE FACTURE.
+
+     IF
+          :OLD.CMD_NUM <> :NEW.CMD_NUM
+     THEN
+          UPDATE FACTURE
+          SET
+               FACTURE.CMD_NUM = :NEW.CMD_NUM
+          WHERE
+               FACTURE.CMD_NUM = :OLD.CMD_NUM;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE COMMANDE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE CONTENIR.
+
+     IF
+          :OLD.CMD_NUM <> :NEW.CMD_NUM
+     THEN
+          UPDATE CONTENIR
+          SET
+               CONTENIR.CMD_NUM = :NEW.CMD_NUM
+          WHERE
+               CONTENIR.CMD_NUM = :OLD.CMD_NUM;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE COMMANDE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE LIVRAISON.
+
+     IF
+          :OLD.CMD_NUM <> :NEW.CMD_NUM
+     THEN
+          UPDATE LIVRAISON
+          SET
+               LIVRAISON.CMD_NUM = :NEW.CMD_NUM
+          WHERE
+               LIVRAISON.CMD_NUM = :OLD.CMD_NUM;
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_COMMANDE
+AFTER INSERT ON COMMANDE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE COMMANDE 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE CLIENT.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM CLIENT
+     WHERE
+          :NEW.CLN_ID = CLIENT.CLN_ID;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "COMMANDE" CAR "CLIENT" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : LIVRAISON
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_LIVRAISON
+AFTER DELETE ON LIVRAISON FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE LIVRER.
+
+     DELETE FROM LIVRER
+     WHERE
+          LIVRER.LIV_NUM = :OLD.LIV_NUM;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_LIVRAISON
+AFTER UPDATE ON LIVRAISON FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE, INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE DE LA 
+     -- TABLE LIVRAISON S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DE LA 
+     -- TABLE COMMANDE.
+
+     IF
+          :OLD.LIV_NUM <> :NEW.LIV_NUM
+     THEN
+          SELECT COUNT(*) INTO NUMROWS
+          FROM COMMANDE
+          WHERE
+               :NEW.CMD_NUM = COMMANDE.CMD_NUM;
+          IF 
+               (
+               NUMROWS = 0 
+               )
+          THEN
+               RAISE_APPLICATION_ERROR(
+               -20007,
+               'IMPOSSIBLE DE METTRE À JOUR "LIVRAISON" CAR "COMMANDE" N''EXISTE PAS.');
+          END IF;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE LIVRAISON SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE LIVRER.
+
+     IF
+          :OLD.LIV_NUM <> :NEW.LIV_NUM
+     THEN
+          UPDATE LIVRER
+          SET
+               LIVRER.LIV_NUM = :NEW.LIV_NUM
+          WHERE
+               LIVRER.LIV_NUM = :OLD.LIV_NUM;
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_LIVRAISON
+AFTER INSERT ON LIVRAISON FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE LIVRAISON 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE COMMANDE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM COMMANDE
+     WHERE
+          :NEW.CMD_NUM = COMMANDE.CMD_NUM;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "LIVRAISON" CAR "COMMANDE" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : PROMOTION
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_PROMOTION
+AFTER DELETE ON PROMOTION FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE CONCERNER.
+
+     DELETE FROM CONCERNER
+     WHERE
+          CONCERNER.PRM_ID = :OLD.PRM_ID;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_PROMOTION
+AFTER UPDATE ON PROMOTION FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE PROMOTION SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE CONCERNER.
+
+     IF
+          :OLD.PRM_ID <> :NEW.PRM_ID
+     THEN
+          UPDATE CONCERNER
+          SET
+               CONCERNER.PRM_ID = :NEW.PRM_ID
+          WHERE
+               CONCERNER.PRM_ID = :OLD.PRM_ID;
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : CLIENT
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_CLIENT
+AFTER DELETE ON CLIENT FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA SUPPRESSION D'UNE OCCURRENCE DE CLIENT S'IL EXISTE DES
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE COMMANDE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM COMMANDE
+     WHERE
+          COMMANDE.CLN_ID = :OLD.CLN_ID;
+     IF (NUMROWS > 0) THEN
+          RAISE_APPLICATION_ERROR(
+          -20001,
+          'IMPOSSIBLE DE SUPPRIMER "CLIENT". DES OCCURRENCES DE "COMMANDE" EXISTENT.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_CLIENT
+AFTER UPDATE ON CLIENT FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE CLIENT SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE COMMANDE.
+
+     IF
+          :OLD.CLN_ID <> :NEW.CLN_ID
+     THEN
+          UPDATE COMMANDE
+          SET
+               COMMANDE.CLN_ID = :NEW.CLN_ID
+          WHERE
+               COMMANDE.CLN_ID = :OLD.CLN_ID;
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : GENRE
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_GENRE
+AFTER DELETE ON GENRE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE APPARTENIR.
+
+     DELETE FROM APPARTENIR
+     WHERE
+          APPARTENIR.GNR_ID = :OLD.GNR_ID;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_GENRE
+AFTER UPDATE ON GENRE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE GENRE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE APPARTENIR.
+
+     IF
+          :OLD.GNR_ID <> :NEW.GNR_ID
+     THEN
+          UPDATE APPARTENIR
+          SET
+               APPARTENIR.GNR_ID = :NEW.GNR_ID
+          WHERE
+               APPARTENIR.GNR_ID = :OLD.GNR_ID;
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : ARTICLE
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_ARTICLE
+AFTER DELETE ON ARTICLE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE LIVRER.
+
+     DELETE FROM LIVRER
+     WHERE
+          LIVRER.ART_ISBN = :OLD.ART_ISBN;
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE CLASSIFIER.
+
+     DELETE FROM CLASSIFIER
+     WHERE
+          CLASSIFIER.ART_ISBN = :OLD.ART_ISBN;
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE CONCERNER.
+
+     DELETE FROM CONCERNER
+     WHERE
+          CONCERNER.ART_ISBN = :OLD.ART_ISBN;
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE APPARTENIR.
+
+     DELETE FROM APPARTENIR
+     WHERE
+          APPARTENIR.ART_ISBN = :OLD.ART_ISBN;
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE AVOIR.
+
+     DELETE FROM AVOIR
+     WHERE
+          AVOIR.ART_ISBN = :OLD.ART_ISBN;
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE ECRIRE.
+
+     DELETE FROM ECRIRE
+     WHERE
+          ECRIRE.ART_ISBN = :OLD.ART_ISBN;
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE CONTENIR.
+
+     DELETE FROM CONTENIR
+     WHERE
+          CONTENIR.ART_ISBN = :OLD.ART_ISBN;
+     -- SUPPRIMER LES OCCURRENCES CORRESPONDANTES DE LA TABLE FOURNIR.
+
+     DELETE FROM FOURNIR
+     WHERE
+          FOURNIR.ART_ISBN = :OLD.ART_ISBN;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_ARTICLE
+AFTER UPDATE ON ARTICLE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE, INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE DE LA 
+     -- TABLE ARTICLE S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DE LA 
+     -- TABLE EDITEUR.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+          SELECT COUNT(*) INTO NUMROWS
+          FROM EDITEUR
+          WHERE
+               :NEW.EDT_ID = EDITEUR.EDT_ID;
+          IF 
+               (
+               NUMROWS = 0 
+               )
+          THEN
+               RAISE_APPLICATION_ERROR(
+               -20007,
+               'IMPOSSIBLE DE METTRE À JOUR "ARTICLE" CAR "EDITEUR" N''EXISTE PAS.');
+          END IF;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE ARTICLE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE LIVRER.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+          UPDATE LIVRER
+          SET
+               LIVRER.ART_ISBN = :NEW.ART_ISBN
+          WHERE
+               LIVRER.ART_ISBN = :OLD.ART_ISBN;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE ARTICLE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE CLASSIFIER.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+          UPDATE CLASSIFIER
+          SET
+               CLASSIFIER.ART_ISBN = :NEW.ART_ISBN
+          WHERE
+               CLASSIFIER.ART_ISBN = :OLD.ART_ISBN;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE ARTICLE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE CONCERNER.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+          UPDATE CONCERNER
+          SET
+               CONCERNER.ART_ISBN = :NEW.ART_ISBN
+          WHERE
+               CONCERNER.ART_ISBN = :OLD.ART_ISBN;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE ARTICLE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE APPARTENIR.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+          UPDATE APPARTENIR
+          SET
+               APPARTENIR.ART_ISBN = :NEW.ART_ISBN
+          WHERE
+               APPARTENIR.ART_ISBN = :OLD.ART_ISBN;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE ARTICLE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE AVOIR.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+          UPDATE AVOIR
+          SET
+               AVOIR.ART_ISBN = :NEW.ART_ISBN
+          WHERE
+               AVOIR.ART_ISBN = :OLD.ART_ISBN;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE ARTICLE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE ECRIRE.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+          UPDATE ECRIRE
+          SET
+               ECRIRE.ART_ISBN = :NEW.ART_ISBN
+          WHERE
+               ECRIRE.ART_ISBN = :OLD.ART_ISBN;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE ARTICLE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE CONTENIR.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+          UPDATE CONTENIR
+          SET
+               CONTENIR.ART_ISBN = :NEW.ART_ISBN
+          WHERE
+               CONTENIR.ART_ISBN = :OLD.ART_ISBN;
+     END IF;
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE ARTICLE SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE FOURNIR.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+          UPDATE FOURNIR
+          SET
+               FOURNIR.ART_ISBN = :NEW.ART_ISBN
+          WHERE
+               FOURNIR.ART_ISBN = :OLD.ART_ISBN;
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_ARTICLE
+AFTER INSERT ON ARTICLE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE ARTICLE 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE EDITEUR.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM EDITEUR
+     WHERE
+          :NEW.EDT_ID = EDITEUR.EDT_ID;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "ARTICLE" CAR "EDITEUR" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : EDITEUR
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE SUPPRESSION ----------------------------------------------
+CREATE TRIGGER TD_EDITEUR
+AFTER DELETE ON EDITEUR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA SUPPRESSION D'UNE OCCURRENCE DE EDITEUR S'IL EXISTE DES
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE ARTICLE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM ARTICLE
+     WHERE
+          ARTICLE.EDT_ID = :OLD.EDT_ID;
+     IF (NUMROWS > 0) THEN
+          RAISE_APPLICATION_ERROR(
+          -20001,
+          'IMPOSSIBLE DE SUPPRIMER "EDITEUR". DES OCCURRENCES DE "ARTICLE" EXISTENT.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_EDITEUR
+AFTER UPDATE ON EDITEUR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- RÉPERCUTER LA MODIFICATION DE LA CLÉ PRIMAIRE DE EDITEUR SUR LES 
+     -- OCCURRENCES CORRESPONDANTES DE LA TABLE ARTICLE.
+
+     IF
+          :OLD.EDT_ID <> :NEW.EDT_ID
+     THEN
+          UPDATE ARTICLE
+          SET
+               ARTICLE.EDT_ID = :NEW.EDT_ID
+          WHERE
+               ARTICLE.EDT_ID = :OLD.EDT_ID;
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : LIVRER
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_LIVRER
+AFTER UPDATE ON LIVRER FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- LIVRAISON.
+
+     IF
+          :OLD.LIV_NUM <> :NEW.LIV_NUM OR 
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "LIVRAISON" INTERDITE.');
+     END IF;
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- ARTICLE.
+
+     IF
+          :OLD.LIV_NUM <> :NEW.LIV_NUM OR 
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "ARTICLE" INTERDITE.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_LIVRER
+AFTER INSERT ON LIVRER FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE LIVRER 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE LIVRAISON.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM LIVRAISON
+     WHERE
+          :NEW.LIV_NUM = LIVRAISON.LIV_NUM;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "LIVRER" CAR "LIVRAISON" N''EXISTE PAS.');
+     END IF;
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE LIVRER 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE ARTICLE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM ARTICLE
+     WHERE
+          :NEW.ART_ISBN = ARTICLE.ART_ISBN;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "LIVRER" CAR "ARTICLE" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : CLASSIFIER
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_CLASSIFIER
+AFTER UPDATE ON CLASSIFIER FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- ARTICLE.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN OR 
+          :OLD.CAT_ID <> :NEW.CAT_ID
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "ARTICLE" INTERDITE.');
+     END IF;
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- CATEGORIE.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN OR 
+          :OLD.CAT_ID <> :NEW.CAT_ID
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "CATEGORIE" INTERDITE.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_CLASSIFIER
+AFTER INSERT ON CLASSIFIER FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE CLASSIFIER 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE ARTICLE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM ARTICLE
+     WHERE
+          :NEW.ART_ISBN = ARTICLE.ART_ISBN;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "CLASSIFIER" CAR "ARTICLE" N''EXISTE PAS.');
+     END IF;
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE CLASSIFIER 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE CATEGORIE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM CATEGORIE
+     WHERE
+          :NEW.CAT_ID = CATEGORIE.CAT_ID;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "CLASSIFIER" CAR "CATEGORIE" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : CONCERNER
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_CONCERNER
+AFTER UPDATE ON CONCERNER FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- ARTICLE.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN OR 
+          :OLD.PRM_ID <> :NEW.PRM_ID OR 
+          :OLD.DATE_DEBUT <> :NEW.DATE_DEBUT
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "ARTICLE" INTERDITE.');
+     END IF;
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- PROMOTION.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN OR 
+          :OLD.PRM_ID <> :NEW.PRM_ID OR 
+          :OLD.DATE_DEBUT <> :NEW.DATE_DEBUT
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "PROMOTION" INTERDITE.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_CONCERNER
+AFTER INSERT ON CONCERNER FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE CONCERNER 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE ARTICLE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM ARTICLE
+     WHERE
+          :NEW.ART_ISBN = ARTICLE.ART_ISBN;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "CONCERNER" CAR "ARTICLE" N''EXISTE PAS.');
+     END IF;
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE CONCERNER 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE PROMOTION.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM PROMOTION
+     WHERE
+          :NEW.PRM_ID = PROMOTION.PRM_ID;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "CONCERNER" CAR "PROMOTION" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : APPARTENIR
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_APPARTENIR
+AFTER UPDATE ON APPARTENIR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- GENRE.
+
+     IF
+          :OLD.GNR_ID <> :NEW.GNR_ID OR 
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "GENRE" INTERDITE.');
+     END IF;
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- ARTICLE.
+
+     IF
+          :OLD.GNR_ID <> :NEW.GNR_ID OR 
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "ARTICLE" INTERDITE.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_APPARTENIR
+AFTER INSERT ON APPARTENIR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE APPARTENIR 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE GENRE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM GENRE
+     WHERE
+          :NEW.GNR_ID = GENRE.GNR_ID;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "APPARTENIR" CAR "GENRE" N''EXISTE PAS.');
+     END IF;
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE APPARTENIR 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE ARTICLE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM ARTICLE
+     WHERE
+          :NEW.ART_ISBN = ARTICLE.ART_ISBN;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "APPARTENIR" CAR "ARTICLE" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : AVOIR
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_AVOIR
+AFTER UPDATE ON AVOIR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- FACTURE.
+
+     IF
+          :OLD.FCT_NUM <> :NEW.FCT_NUM OR 
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "FACTURE" INTERDITE.');
+     END IF;
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- ARTICLE.
+
+     IF
+          :OLD.FCT_NUM <> :NEW.FCT_NUM OR 
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "ARTICLE" INTERDITE.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_AVOIR
+AFTER INSERT ON AVOIR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE AVOIR 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE FACTURE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM FACTURE
+     WHERE
+          :NEW.FCT_NUM = FACTURE.FCT_NUM;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "AVOIR" CAR "FACTURE" N''EXISTE PAS.');
+     END IF;
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE AVOIR 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE ARTICLE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM ARTICLE
+     WHERE
+          :NEW.ART_ISBN = ARTICLE.ART_ISBN;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "AVOIR" CAR "ARTICLE" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : ECRIRE
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_ECRIRE
+AFTER UPDATE ON ECRIRE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- ARTICLE.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN OR 
+          :OLD.AUT_ID <> :NEW.AUT_ID
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "ARTICLE" INTERDITE.');
+     END IF;
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- AUTEUR.
+
+     IF
+          :OLD.ART_ISBN <> :NEW.ART_ISBN OR 
+          :OLD.AUT_ID <> :NEW.AUT_ID
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "AUTEUR" INTERDITE.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_ECRIRE
+AFTER INSERT ON ECRIRE FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE ECRIRE 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE ARTICLE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM ARTICLE
+     WHERE
+          :NEW.ART_ISBN = ARTICLE.ART_ISBN;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "ECRIRE" CAR "ARTICLE" N''EXISTE PAS.');
+     END IF;
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE ECRIRE 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE AUTEUR.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM AUTEUR
+     WHERE
+          :NEW.AUT_ID = AUTEUR.AUT_ID;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "ECRIRE" CAR "AUTEUR" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : CONTENIR
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_CONTENIR
+AFTER UPDATE ON CONTENIR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- COMMANDE.
+
+     IF
+          :OLD.CMD_NUM <> :NEW.CMD_NUM OR 
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "COMMANDE" INTERDITE.');
+     END IF;
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- ARTICLE.
+
+     IF
+          :OLD.CMD_NUM <> :NEW.CMD_NUM OR 
+          :OLD.ART_ISBN <> :NEW.ART_ISBN
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "ARTICLE" INTERDITE.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_CONTENIR
+AFTER INSERT ON CONTENIR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE CONTENIR 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE COMMANDE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM COMMANDE
+     WHERE
+          :NEW.CMD_NUM = COMMANDE.CMD_NUM;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "CONTENIR" CAR "COMMANDE" N''EXISTE PAS.');
+     END IF;
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE CONTENIR 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE ARTICLE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM ARTICLE
+     WHERE
+          :NEW.ART_ISBN = ARTICLE.ART_ISBN;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "CONTENIR" CAR "ARTICLE" N''EXISTE PAS.');
+     END IF;
+
+END;
+/
+
+
+
+-- ------------------------------------------------------------------------------- 
+--   TABLE : FOURNIR
+-- ------------------------------------------------------------------------------- 
+
+-- TRIGGER DE MODIFICATION ----------------------------------------------
+CREATE TRIGGER TU_FOURNIR
+AFTER UPDATE ON FOURNIR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- FOURNISSEUR.
+
+     IF
+          :OLD.FRN_ID <> :NEW.FRN_ID OR 
+          :OLD.ART_ISBN <> :NEW.ART_ISBN OR 
+          :OLD.FOU_DATE <> :NEW.FOU_DATE OR 
+          :OLD.FOU_HEURE <> :NEW.FOU_HEURE
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "FOURNISSEUR" INTERDITE.');
+     END IF;
+     -- INTERDIRE LA MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT LA TABLE 
+     -- ARTICLE.
+
+     IF
+          :OLD.FRN_ID <> :NEW.FRN_ID OR 
+          :OLD.ART_ISBN <> :NEW.ART_ISBN OR 
+          :OLD.FOU_DATE <> :NEW.FOU_DATE OR 
+          :OLD.FOU_HEURE <> :NEW.FOU_HEURE
+     THEN
+               RAISE_APPLICATION_ERROR(
+               -20008,
+               'MODIFICATION DE LA CLÉ ÉTRANGÈRE RÉFÉRENÇANT "ARTICLE" INTERDITE.');
+     END IF;
+
+END;
+/
+
+-- TRIGGER D'INSERTION ----------------------------------------------
+CREATE TRIGGER TI_FOURNIR
+AFTER INSERT ON FOURNIR FOR EACH ROW
+DECLARE NUMROWS INTEGER;
+BEGIN
+
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE FOURNIR 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE FOURNISSEUR.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM FOURNISSEUR
+     WHERE
+          :NEW.FRN_ID = FOURNISSEUR.FRN_ID;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "FOURNIR" CAR "FOURNISSEUR" N''EXISTE PAS.');
+     END IF;
+     -- SAUF VALEUR NULLE AUTORISÉE, INTERDIRE LA CRÉATION D'UNE OCCURRENCE DE FOURNIR 
+     -- S'IL N'EXISTE PAS D'OCCURRENCE CORRESPONDANTE DANS LA TABLE ARTICLE.
+
+     SELECT COUNT(*) INTO NUMROWS
+     FROM ARTICLE
+     WHERE
+          :NEW.ART_ISBN = ARTICLE.ART_ISBN;
+     IF 
+          (
+          NUMROWS = 0 
+          )
+     THEN
+          RAISE_APPLICATION_ERROR(
+               -20002,
+               'IMPOSSIBLE D''AJOUTER "FOURNIR" CAR "ARTICLE" N''EXISTE PAS.');
+     END IF;
+
+END;
+/

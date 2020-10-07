@@ -1,0 +1,106 @@
+-- -----------------------------------------------------------------------------
+--       Insertion des données
+-- -----------------------------------------------------------------------------
+
+insert into EDITEUR (EDT_LIB) values ('L''éditeur belfortain');
+insert into EDITEUR (EDT_LIB) values ('Laude');
+insert into EDITEUR (EDT_LIB) values ('Les milles pages');
+
+Insert into ARTICLE 
+(ART_ISBN,EDT_ID,ART_TITRE,ART_DATE_SORTIE,ART_PRIX_HT,ART_TVA,ART_QTE_DISPO,ART_RESUME,ART_NB_PAGES,ART_LANGUE,ART_IMAGE,EDT_LIB)
+values
+('1234567890125','1','Les amis','31/08/2020',20.00,25,20,'Deux amis partent vers une nouvelle ville afin de chercher leur troisième ami. Ils rencontrent des créatures étranges durant leur recherche.',210,'Francais',NULL,'L''éditeur belfortain');
+Insert into ARTICLE 
+(ART_ISBN,EDT_ID,ART_TITRE,ART_DATE_SORTIE,ART_PRIX_HT,ART_TVA,ART_QTE_DISPO,ART_RESUME,ART_NB_PAGES,ART_LANGUE,ART_IMAGE,EDT_LIB)
+values
+('1234567890120','1','Les aventures de jean','22/02/2015',30.00,25,22,'Jean cherche des animaux dans la foret. Il retourve des créatures nouvelles que personne ne connait. ',150,'Francais',NULL,'L''éditeur belfortain');
+
+Insert into ARTICLE 
+(ART_ISBN,EDT_ID,ART_TITRE,ART_DATE_SORTIE,ART_PRIX_HT,ART_TVA,ART_QTE_DISPO,ART_RESUME,ART_NB_PAGES,ART_LANGUE,ART_IMAGE,EDT_LIB)
+values
+('1234567890130','2','Les cartes du monde','20/07/1996',16.00,25,2,'Le monde détruit, jacques doit le recontruire. Il commence par éliminer toute espèce vivante connue',150,'Francais',NULL,'Laude');
+Insert into ARTICLE 
+(ART_ISBN,EDT_ID,ART_TITRE,ART_DATE_SORTIE,ART_PRIX_HT,ART_TVA,ART_QTE_DISPO,ART_RESUME,ART_NB_PAGES,ART_LANGUE,ART_IMAGE,EDT_LIB)
+values
+('1234567890135','1','The friends','22/07/2008',24.75,25,8,'Many friends go on a trip around the world to discover many cities and places',167,'Anglais',NULL,'L''éditeur belfortain');
+
+Insert into ARTICLE 
+(ART_ISBN,EDT_ID,ART_TITRE,ART_DATE_SORTIE,ART_PRIX_HT,ART_TVA,ART_QTE_DISPO,ART_RESUME,ART_NB_PAGES,ART_LANGUE,ART_IMAGE,EDT_LIB)
+values
+('1234567890140','1','Le loup','12/02/2020',22.5,25,10,'Le loup est un animal sauvage. Suite à un évènement, il commence à parler aux hommes.',101,'Français',NULL,'L''éditeur belfortain');
+
+INSERT INTO PROMOTION (PRM_LIBELLE,PRM_DUREE,PRM_DATE_FIN) VALUES ('Promotion d''ete 2020',60,TO_DATE('28/08/2020','DD/MM/YYYY'));
+INSERT INTO PROMOTION (PRM_LIBELLE,PRM_DUREE,PRM_DATE_FIN) VALUES ('Promotion de printemps 2020',30,TO_DATE('01/06/2020','DD/MM/YYYY'));
+INSERT INTO PROMOTION (PRM_LIBELLE,PRM_DUREE,PRM_DATE_FIN) VALUES ('Promotion d''automne 2019',60,TO_DATE('28/11/2019','DD/MM/YYYY'));
+
+INSERT INTO CONCERNER VALUES (1234567890120,1,TO_DATE('09/06/2020','DD/MM/YYYY'),0.225);
+INSERT INTO CONCERNER VALUES (1234567890125,1,TO_DATE('15/06/2020','DD/MM/YYYY'),0.25);
+INSERT INTO CONCERNER VALUES (1234567890130,2,TO_DATE('30/09/2020','DD/MM/YYYY'),0.25);
+
+INSERT INTO GENRE (GNR_LIB) VALUES('action');
+INSERT INTO GENRE (GNR_LIB) VALUES('aventure');
+INSERT INTO GENRE (GNR_LIB) VALUES('policier');
+INSERT INTO GENRE (GNR_LIB) VALUES('drame');
+
+INSERT INTO APPARTENIR VALUES (1, 1234567890130);
+INSERT INTO APPARTENIR VALUES (2, 1234567890120);
+INSERT INTO APPARTENIR VALUES (1, 1234567890125);
+INSERT INTO APPARTENIR VALUES (1, 1234567890135);
+INSERT INTO APPARTENIR VALUES (1, 1234567890140);
+
+INSERT INTO CATEGORIE (CAT_LIBELLE) VALUES('Roman');
+INSERT INTO CATEGORIE (CAT_LIBELLE) VALUES('Nouvelle');
+
+insert into CLASSIFIER values (1234567890125,1);
+insert into CLASSIFIER values (1234567890130,2);
+insert into CLASSIFIER values (1234567890135,2);
+insert into CLASSIFIER values (1234567890140,1);
+
+INSERT INTO AUTEUR (AUT_NOM,AUT_PRENOM,AUT_SEXE,AUT_DATE_NAISSANCE) VALUES('Bousselmi','Mohamed','M',TO_DATE('19/08/1996','DD/MM/YYYY'));
+INSERT INTO AUTEUR (AUT_NOM,AUT_PRENOM,AUT_SEXE,AUT_DATE_NAISSANCE) VALUES('Jade','Litoran','F',TO_DATE('12/02/1956','DD/MM/YYYY'));
+INSERT INTO AUTEUR (AUT_NOM,AUT_PRENOM,AUT_SEXE,AUT_DATE_NAISSANCE) VALUES('Jacques','Doy','M',TO_DATE('18/08/1986','DD/MM/YYYY'));
+
+insert into ECRIRE values ( 1234567890125, 1 );
+insert into ECRIRE values ( 1234567890130, 2 );
+insert into ECRIRE values ( 1234567890135, 2 );
+insert into ECRIRE values ( 1234567890140, 3 );
+
+Insert into  CLIENT (CLN_NOM,CLN_PRENOM,CLN_SEXE,CLN_EMAIL,CLN_MOT_PASSE,CLN_RUE,CLN_CP,CLN_VILLE,CLN_PAYS,CLN_COMP_ADRESSE)
+values ('Tom','Vally','M','user@gmail.com','user12345','3 rue Leclerc','92000','BORDEAUX','France','chambre 3');
+
+Insert into  COMMANDE (CMD_NUM ,CMD_DATE_MODIF,CMD_DESC,CMD_PRIX_TTC,CMD_PAYE,CLN_ID, FCT_MODE) values ('1',to_date('16/06/2020','DD/MM/RR'),'Commande en ligne','60','1',1,'VISA');
+
+INSERT INTO FACTURE (CMD_NUM,FCT_DATE,FCT_MODE,FCT_MONTANT) VALUES(1, TO_DATE('05/06/2020','DD/MM/YYYY'),'VISA',200);
+-- à compléter
+insert into AVOIR values (
+    1,
+    1234567890125,
+    2,
+    40    
+   )
+;
+
+insert into CONTENIR values (1,1234567890125,2,40);
+insert into CONTENIR values (1,1234567890130,1,16);
+
+INSERT INTO FOURNISSEUR (FRN_NOM,FRN_TEL,FRN_RUE,FRN_COMP_ADRESSE,FRN_CP,FRN_VILLE,FRN_PAYS) VALUES ('Chine','0145747854','1 rue du rhone','appt 47','75000','PARIS','France');
+INSERT INTO FOURNISSEUR (FRN_NOM,FRN_TEL,FRN_RUE,FRN_COMP_ADRESSE,FRN_CP,FRN_VILLE,FRN_PAYS) VALUES ('Les lieux','0145747853','2 rue du rhone','appt 40','90000','BELFORT','France');
+
+INSERT INTO FOURNIR values (1,1234567890125,TO_DATE('02/06/2020','DD-MM-YYYY'),TO_DATE('02/06/2020 13:38:11','DD-MM-YYYY HH24:MI:SS'),20,20);
+INSERT INTO FOURNIR values (1,1234567890130,TO_DATE('05/06/2020','DD-MM-YYYY'),TO_DATE('05/06/2020 15:38:00','DD-MM-YYYY HH24:MI:SS'),22,20);
+INSERT INTO FOURNIR values (1,1234567890135,TO_DATE('01/02/2020','DD-MM-YYYY'),TO_DATE('01/02/2020 15:40:00','DD-MM-YYYY HH24:MI:SS'), 2,20);
+INSERT INTO FOURNIR values (2,1234567890135,TO_DATE('01/02/2020','DD-MM-YYYY'),TO_DATE('01/02/2020 15:40:00','DD-MM-YYYY HH24:MI:SS'), 8,20);
+INSERT INTO FOURNIR values (2,1234567890130,TO_DATE('01/02/2020','DD-MM-YYYY'),TO_DATE('01/02/2020 15:40:00','DD-MM-YYYY HH24:MI:SS'),10,20);
+
+Insert into  LIVRAISON (LIV_NUM,CMD_NUM,LIV_DATE	  ,LIV_FRAIS          ,LIV_RUE,            LIV_COMP_ADRESSE,LIV_CP  ,LIV_VILLE   ,LIV_PAYS) 
+		values ('1'    ,'1'    ,to_date('21/06/20','DD/MM/RR'),20     ,'06 rue de belfort',' '             ,'760000','Leudelange','LUX');
+
+INSERT INTO LIVRER
+values   (    
+	'1',
+	    1234567890125,    
+	2,    
+	0
+   );
+
+COMMIT;
